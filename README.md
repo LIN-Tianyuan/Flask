@@ -1,13 +1,13 @@
 # Flask
 ## Introduction to Flask
-### Flask
+### 1. Flask
 Flask was born in 2010, is Armin ronacher (human name) in Python language based on the Werkzeug toolkit written lightweight web development framework.
 
 Flask itself is equivalent to a kernel , almost all other features have to use extensions ( mail extension Flask-Mail, user authentication Flask-Login, database Flask-SQLAlchemy), all need to use third-party extensions to achieve . For example, we can use Flask extensions to add ORM, form validation tools, file uploads, authentication, etc. Flask does not have a default database to use, we can choose MySQL, we can also use NoSQL.
 
 Its WSGI toolkit using Werkzeug (routing module), the template engine uses Jinja2. These two are also the core of the Flask framework.
 
-### Framework Comparison
+### 2. Framework Comparison
 #### Lightness of the framework
 Heavyweight framework: to facilitate the development of business programs, provides a wealth of tools, components, such as Django
 
@@ -32,7 +32,7 @@ django provides:
 
 All of these, flask do not have, need to extend the package to provide.
 
-### Common Expansion Packs
+### 3. Common Expansion Packs
 List of extensions: http://flask.pocoo.org/extensions/
  - Flask-SQLalchemy: manipulating databases;
  - Flask-script: inserting scripts;
@@ -48,8 +48,8 @@ List of extensions: http://flask.pocoo.org/extensions/
  - Flask-Moment: localized date and time;
  - Flask-Admin: a simple and extensible framework for managing interfaces
 
-## project management
-### Environment Installation
+## Project management
+### 1. Environment Installation
 #### Virtual environments and the pip command
 ```bash
 # Virtual environments
@@ -70,7 +70,7 @@ source flask-env/bin/activate
 # Install Flask
 pip3 install flask
 ```
-### Flask Programming
+### 2. Flask Programming
  - Create the helloworld.py file
 ```python
 # Importing Flask Classes
@@ -96,7 +96,7 @@ if __name__ == '__main__':
 python3 helloworld.py
  ```
 
-### Parameter description
+### 3. Parameter description
 #### Flask object initialization parameters
 When a Flask program instance is created, it needs to be passed the package (module) specified by the current Flask program by default.
 
@@ -236,7 +236,7 @@ About DEBUG debugging mode:
  - The server can be restarted automatically after the program code is modified.
  - When the server error occurs, we can directly return the error information to the front-end for display.
 
-### Development server startup method
+### 4. Development server startup method
 #### Terminal Launch
 ```bash
 $ export FLASK_APP=helloworld
@@ -264,3 +264,151 @@ $ python -m flask run
 #### Pycharm Launch
 ![set_up_env](image_md/env.png)
 ![set_up_env2](image_md/env2.png)
+
+## Routing and blueprints
+### 1. Router
+```python
+@app.route("/")
+def index():
+    return "hello world"
+```
+#### Query Routing Information
+ - Command-line method
+```bash
+export FLASK_APP=helloworld_production
+flask routes
+```
+```bash
+Endpoint  Methods  Rule
+--------  -------  -----------------------
+index     GET      /
+static    GET      /static/
+```
+ - Get it in the program
+   - The url_map attribute in the application holds the route mapping information for the entire Flask application, and you can get the routing information by reading this attribute
+    ```python
+    print(app.url_map)
+    ```
+   - If we want to traverse the routing information in our program, we can do it as follows
+    ```python
+    for rule in app.url_map.iter_rules():
+        print('name={} path={}'.format(rule.endpoint, rule.rule))
+    ```
+```python
+# Requirement
+# Return all routing information within the application in json via /
+
+# Realization
+@app.route('/')
+def route_map():
+    """Main view, return all view URLs"""
+    rules_iterator = app.url_map.iter_rules()
+    return json.dumps({rule.endpoint: rule.rule for rule in rules_iterator})
+```
+### 2. Specify the request method
+In Flask, define routes whose default request method is:
+ - GET
+ - OPTIONS(included) -> Simplified version of a GET request to ask for server interface information
+   - For example, the type of request allowed by the interface, the allowed request source domain name
+   - CORS cross-domain: django-cors -> The options request is intercepted and processed in the middleware.
+   - www.lemonmall.site -> api/lemonmall.site/users/1
+     - Return response -> allow-origin 'www.lemonmall.site'
+     - GET api.lemonmall.site/users/1
+ - HEAD (included) -> Simplified version of GET request
+   - Returns only the response header when a GET request is processed, not the response body
+
+The methods parameter allows you to specify your own request method for an interface.
+
+Customized POST PUT DELETE PATCH
+
+405 Method Not Allowed
+```python
+@app.route("/route1", methods=["POST"])
+def view_func_1():
+    return "hello world 1"
+
+@app.route("/route2", methods=["GET", "POST"])
+def view_func_2():
+    return "hello world 2"
+```
+
+### 2. Blueprint
+#### Demand
+In a Flask application project, if there are too many business views, is it possible to maintain the business units divided in a certain way, and separate the views, static files, template files, etc. used by each unit?
+
+For example, from the business point of view, the entire application can be divided into user module unit, product module unit, order module unit, how to develop these different units, and ultimately integrated into a project application?
+
+#### Blueprint
+In Flask, the Blueprint is used to organize the management in modules.
+
+A Blueprint can actually be understood as a container object that stores a set of view methods with the following characteristics:
+
+ - An application can have multiple Blueprints
+ - A Blueprint can be registered to any unused URL such as “/user”, “/goods”.
+ - Blueprints can have their own templates, static files, or other common methods, and are not required to implement the application's views and functions.
+ - Blueprints should be registered when an application is initialized.
+
+But a Blueprint is not a complete application, it can not run independently of the application, but must be registered to an application.
+#### Usage
+Using a blueprint can be broken down into three steps:
+1. Create a blueprint object
+```python
+user_bp=Blueprint('user',__name__)
+```
+2. Operate on this blueprint object, register routes, specify static folders, register template filters
+```python
+@user_bp.route('/')
+def user_profile():
+    return 'user_profile'
+```
+3. Register this blueprint object with the application object
+```python
+app.register_blueprint(user_bp)
+```
+
+Single file blueprints
+ - Can create blueprint objects and define views in a single file.
+
+Catalog (package) blueprints
+ - For a blueprint that is intended to contain multiple files, it is common to place the creation of the blueprint object in the Python package's `__init__.py` file.
+
+```bash
+--------- project # Project Catalog
+  |------ main.py # Startup file
+  |------ user  # User blueprint
+  |  |--- __init__.py  # Create blueprint objects here
+  |  |--- passport.py  
+  |  |--- profile.py
+  |  |--- ...
+  |
+  |------ goods # Commodity Blueprint
+  |  |--- __init__.py
+  |  |--- ...
+  |...
+```
+
+#### Extended Usage
+ - Specify the url prefix of the blueprint
+   - Use the url_prefix parameter when registering the blueprint in the application to specify
+   ```python
+    app.register_blueprint(user_bp, url_prefix='/user')
+    app.register_blueprint(goods_bp, url_prefix='/goods')
+    ```
+ - Blueprint internal static files
+   - Unlike application objects, blueprint objects do not register static directory routes by default when they are created. We need to specify the static_folder parameter at creation time.
+   - The following example sets the static_admin directory in the directory where the blueprint is located to the static directory
+   ```python
+    admin = Blueprint("admin",__name__,static_folder='static_admin')
+    app.register_blueprint(admin,url_prefix='/admin')
+    ```
+   - Static files in the `static_admin` directory can now be accessed using `/admin/static_admin/<filename>`.
+   - The access path can also be changed with `static_url_path`.
+   ```python
+    admin = Blueprint("admin",__name__,static_folder='static_admin',static_url_path='/lib')
+    app.register_blueprint(admin,url_prefix='/admin')
+    ```
+ - Blueprint Internal Template Catalog
+   - The default template directory for blueprint objects is the system's template directory, which can be set using the template_folder keyword parameter when creating a blueprint object.
+   ```python
+    admin = Blueprint('admin',__name__,template_folder='my_templates')
+    ```
