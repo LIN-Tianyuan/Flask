@@ -305,7 +305,7 @@ def route_map():
     rules_iterator = app.url_map.iter_rules()
     return json.dumps({rule.endpoint: rule.rule for rule in rules_iterator})
 ```
-### 2. Specify the request method
+#### Specify the request method
 In Flask, define routes whose default request method is:
  - GET
  - OPTIONS(included) -> Simplified version of a GET request to ask for server interface information
@@ -412,3 +412,120 @@ Catalog (package) blueprints
    ```python
     admin = Blueprint('admin',__name__,template_folder='my_templates')
     ```
+### Return Json
+ - return jsonify
+   - Convert to json format
+   - Set the response header Content-Type:application/json
+### Building response headers and status codes
+
+## Request and Response
+### 1. Processing requests
+Requirement
+
+When we need to read the data carried by a client request in view writing, how can we get the data out correctly?
+
+The data carried by the request may appear in different places in the HTTP message, and different methods need to be used to get the parameters.
+
+#### URL path parameters (dynamic routing)
+For example, there is a request to access the interface address /users/123, where 123 is actually a specific request parameter indicating that information about user 123 is requested. At this point how do we extract the 123 data from the url?
+
+Unlike Django, which writes regular expressions directly when defining routes, Flask uses a converter syntax:
+```python
+@app.route('/users/<user_id>')
+def user_info(user_id):
+    print(type(user_id))
+    return 'hello user {}'.format(user_id)
+```
+The <> here is a converter, which defaults to a string type, i.e., it matches the data at this location in string format and passes it into the view with string as the datatype type and user_id as the parameter name.
+
+#### Flask also provides other types of converters
+```bash
+DEFAULT_CONVERTERS = {
+    'default':          UnicodeConverter,
+    'string':           UnicodeConverter,
+    'any':              AnyConverter,
+    'path':             PathConverter,
+    'int':              IntegerConverter,
+    'float':            FloatConverter,
+    'uuid':             UUIDConverter,
+}
+```
+```python
+@app.route('/users/<int:user_id>')
+def user_info(user_id):
+    print(type(user_id))
+    return 'hello user {}'.format(user_id)
+
+
+@app.route('/users/<int(min=1):user_id>')
+def user_info(user_id):
+    print(type(user_id))
+    return 'hello user {}'.format(user_id)
+```
+#### Customized converters
+If we encounter the need to match the cell phone number data extracted from /sms_codes/18512345678, Flask's built-in converter will not be able to meet the demand, this time we need to customize the converter.
+
+Definition method(Customizing the converter is done in 3 main steps)
+ - Create a converter class that holds the regular expression when matched
+    ```python
+   from werkzeug.routing import BaseConverter
+   
+   class MobileConverter(BaseConverter):
+       """
+       Mobile phone
+       """
+       regex = r'1[3-9]\d{9}'
+   ```
+   - Note that the name regex is fixed
+ - Inform Flask apps about customized converters
+   ```python
+   app = Flask(__name__)
+   
+   # Add the custom converter to the converter dictionary and specify that the converter is used with the name: mobile
+   app.url_map.converters['mobile'] = MobileConverter
+   ```
+ - Define the use of converters where they are used
+   ```python
+   @app.route('/sms_codes/<mobile:mob_num>')
+   def send_sms_code(mob_num):
+       return 'send sms code to {}'.format(mob_num)
+   ```
+#### Other parameters
+If we want to get the parameters passed elsewhere, we can read them through the request object provided by Flask.
+
+The parameters in different locations are stored in different properties of the request.
+
+Properties	| Description      | Types  
+---|------------------|-----|
+data	| Logging the requested data and converting it to a string	 | *   
+form	|Logging form data in requests|	MultiDict
+args	|Query parameters in logging requests|	MultiDict
+cookies	|Logging cookie information in requests|	Dict
+headers	|Record the headers in the request|	EnvironHeaders
+method	|Log the HTTP method used for the request	|GET/POST
+url	|Record the URL address of the request|	string
+files	|Logging of files requested for upload	|*
+
+To get the parameter channel_id in request/articles?channel_id=1, we can use it as follows:
+```python
+from flask import request
+
+@app.route('/articles')
+def get_articles():
+    channel_id = request.args.get('channel_id')
+    return 'you wanna get articles of channel {}'.format(channel_id)
+```
+
+#### Upload a picture
+Client uploads an image to the server and saves it to the server
+```python
+from flask import request
+
+@app.route('/upload', methods=['POST'])
+def upload_file():
+    f = request.files['pic']
+    # with open('./demo.png', 'wb') as new_file:
+    #     new_file.write(f.read())
+    f.save('./demo.png')
+    return 'ok'
+```
