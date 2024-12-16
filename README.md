@@ -412,15 +412,10 @@ Catalog (package) blueprints
    ```python
     admin = Blueprint('admin',__name__,template_folder='my_templates')
     ```
-### Return Json
- - return jsonify
-   - Convert to json format
-   - Set the response header Content-Type:application/json
-### Building response headers and status codes
 
 ## Request and Response
 ### 1. Processing requests
-Requirement
+#### Requirement
 
 When we need to read the data carried by a client request in view writing, how can we get the data out correctly?
 
@@ -528,4 +523,153 @@ def upload_file():
     #     new_file.write(f.read())
     f.save('./demo.png')
     return 'ok'
+```
+
+### 2. Processing Response
+#### Requirement
+
+How to return different response messages in different scenarios?
+
+#### Return to Templates
+
+Use the `render_template` method to render the template and return.
+
+For example, create a new template index.html
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+</head>
+<body>
+My template
+<br/>{{ my_str }}
+<br/>{{ my_int }}
+</body>
+</html>
+```
+
+Back-end view
+```python
+from flask import render_template
+
+@app.route('/')
+def index():
+    mstr = 'Hello alex'
+    mint = 10
+    return render_template('index.html', my_str=mstr, my_int=mint)
+```
+#### Redirect
+```python
+from flask import redirect
+
+@app.route('/demo2')
+def demo2():
+    return redirect('https://www.google.com')
+```
+
+#### Return Json
+```python
+from flask import jsonify
+
+@app.route('/demo3')
+def demo3():
+    json_dict = {
+        "user_id": 10,
+        "user_name": "alex"
+    }
+    return jsonify(json_dict)
+```
+- return jsonify
+   - Convert to json format
+   - Set the response header Content-Type:application/json
+#### Customizing status codes and response headers
+ - Tuple way
+   - A tuple may be returned, such a tuple must be of the form **(response, status, headers)** and contain at least one element. The status value overrides the status code, and headers can be a list or dictionary as an additional message header value.
+   ```python
+   @app.route('/demo4')
+   def demo4():
+       # return 'Status code is 666', 666
+       # return 'Status code is 666', 666, [('Name', 'Python')]
+       return 'Status code is 666', 666, {'Name': 'Python'}
+   ```
+ - make_response way
+   ```python
+   @app.route('/demo5')
+   def demo5():
+       resp = make_response('make response test')
+       resp.headers["Name"] = "Python"
+       resp.status = "404 not found"
+       return resp
+   ```
+   
+### 3. Cookie vs Session
+#### Cookie
+ - Set
+```python
+from flask import Flask, make_response
+
+app = Flask(__name__)
+
+@app.route('/cookie')
+def set_cookie():
+    resp = make_response('set cookie ok')
+    resp.set_cookie('username', 'alex')
+    return resp
+```
+ - Set the expiration date
+```python
+@app.route('/cookie')
+def set_cookie():
+    response = make_response('hello world')
+    response.set_cookie('username', 'alex', max_age=3600)
+    return response
+```
+ - Read
+```python
+from flask import request
+
+@app.route('/get_cookie')
+def get_cookie():
+    resp = request.cookies.get('username')
+    return resp
+```
+ - Delete
+```python
+from flask import request
+
+@app.route('/delete_cookie')
+def delete_cookie():
+    response = make_response('hello world')
+    response.delete_cookie('username')
+    return response
+```
+
+#### Session
+ - SECRET_KEY needs to be set first.
+```python
+class DefaultConfig(object):
+    SECRET_KEY = 'fih9fh9eh9gh2'
+
+app.config.from_object(DefaultConfig)
+
+# Or set up directly
+app.secret_key='xihwidfw9efw'
+```
+ - Set
+```python
+from flask import session
+
+@app.route('/set_session')
+def set_session():
+    session['username'] = 'alex'
+    return 'set session ok'
+```
+ - Read
+```python
+@app.route('/get_session')
+def get_session():
+    username = session.get('username')
+    return 'get session username {}'.format(username)
 ```
