@@ -1,7 +1,13 @@
-from flask import Flask, request
+from flask import Flask, request, abort
 from werkzeug.routing import BaseConverter
 
 app = Flask(__name__)
+
+app.config['name'] = 'python'
+
+@app.errorhandler(ZeroDivisionError)
+def zero_division_error(e):
+    return 'The divisor cannot be 0'
 
 
 # /users/123
@@ -23,10 +29,14 @@ def send_sms_code(mob_num):
     print(type(mob_num))
     return 'get users {}'.format(mob_num)
 
+
 # /articles/?channel_id=123
 @app.route('/articles')
 def get_articles():
     channel_id = request.args.get('channel_id')
+
+    if channel_id is None:
+        abort(400)
     return 'You wanna get articles of channel {}'.format(channel_id)
 
 
