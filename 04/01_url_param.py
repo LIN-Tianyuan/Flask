@@ -5,6 +5,7 @@ app = Flask(__name__)
 
 app.config['name'] = 'python'
 
+
 @app.errorhandler(ZeroDivisionError)
 def zero_division_error(e):
     return 'The divisor cannot be 0'
